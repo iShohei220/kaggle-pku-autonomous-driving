@@ -98,8 +98,8 @@ class ResNetFPN(nn.Module):
         else:
             raise NotImplementedError
             
+        self.after_non_local = after_non_local
         if after_non_local is not None:
-            self.after_non_local = after_non_local
             in_channels = getattr(self.backbone, after_non_local)[0].conv1.in_channels
             if non_local_hidden_channels is None:
                 non_local_hidden_channels = in_channels // 2
