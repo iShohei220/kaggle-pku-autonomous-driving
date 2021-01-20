@@ -70,6 +70,7 @@ def parse_args():
     parser.add_argument('--gn', default=False, type=str2bool)
     parser.add_argument('--ws', default=False, type=str2bool)
     parser.add_argument('--lhalf', default=True, type=str2bool)
+    parser.add_argument('--non_local', default=True, type=str2bool)
 
     # pseudo labeling
     parser.add_argument('--load_model', default=None)
@@ -457,7 +458,8 @@ def main():
                           num_filters=config['num_filters'],
                           dcn=config['dcn'],
                           gn=config['gn'], ws=config['ws'],
-                          freeze_bn=config['freeze_bn'])
+                          freeze_bn=config['freeze_bn'],
+                          non_local=config['non_local'])
         model = model.cuda()
 
         if config['load_model'] is not None:

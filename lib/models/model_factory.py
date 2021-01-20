@@ -8,11 +8,13 @@ from . import dla
 
 
 def get_model(name, heads, head_conv=128, num_filters=[256, 256, 256],
-              dcn=False, gn=False, ws=False, freeze_bn=False, **kwargs):
+              dcn=False, gn=False, ws=False, freeze_bn=False, non_local=True, **kwargs):
     if 'res' in name and 'fpn' in name:
         backbone = '_'.join(name.split('_')[:-1])
+        after_non_local = 'layer1' if non_local else None
         model = resnet_fpn.ResNetFPN(backbone, heads, head_conv, num_filters,
-                                     dcn=dcn, gn=gn, ws=ws, freeze_bn=freeze_bn)
+                                     dcn=dcn, gn=gn, ws=ws, freeze_bn=freeze_bn,
+                                     after_non_local=after_non_local)
     elif 'dla' in name:
         pretrained = '_'.join(name.split('_')[1:])
         model = dla.get_dla34(heads, pretrained, head_conv, num_filters,

@@ -20,27 +20,3 @@ class Conv2d(nn.Conv2d):
             weight = weight / std.expand_as(weight)
         return F.conv2d(input, weight, self.bias, self.stride,
                         self.padding, self.dilation, self.groups)
-
-    
-class NonLocal2d(nn.Module):
-    def __init__(self, in_channels, hidden_channels):
-        super(NonLocal2d, self).__init__()
-        self.query_conv = nn.Conv2d(in_channels, hidden_channels, 1, 1, 0)
-        self.key_conv = nn.Conv2d(in_channels, hidden_channels, 1, 1, 0)
-        self.value_conv = nn.Conv2d(in_channels, in_channels, 1, 1, 0)
-        self.reset_parameters()
-
-    def forward(self, x):
-        query = self.query_conv(x).flatten(2)
-        key = self.key_conv(x).flatten(2)
-        value = self.value_conv(x).flatten(2)
-
-        energy = query.transpose(1, 2).bmm(key)
-        weight = F.softmax(energy, dim=-1)
-        output = x + value.bmm(weight.transpose(1, 2)).reshape(x.size())
-
-        return output
-
-    def reset_parameters(self):
-        nn.init.zeros_(self.value_conv.weight)
-        nn.init.zeros_(self.value_conv.bias)
