@@ -5,7 +5,7 @@ from torchvision import models
 import pretrainedmodels
 import timm
 
-from .modules import Conv2d
+from .modules import Conv2d, NonLocal2d
 from .DCNv2.dcn_v2 import DCN
 
 
@@ -28,7 +28,8 @@ def convert_to_inplace_relu(model):
 class ResNetFPN(nn.Module):
     def __init__(self, backbone, heads, head_conv=128,
                  num_filters=[256, 256, 256], pretrained=True,
-                 dcn=False, gn=False, ws=False, freeze_bn=False):
+                 dcn=False, gn=False, ws=False, freeze_bn=False,
+                 after_non_local='layer1', non_local_hidden_channels=None):
         super().__init__()
 
         self.heads = heads
@@ -96,6 +97,13 @@ class ResNetFPN(nn.Module):
             num_bottleneck_filters = 2048
         else:
             raise NotImplementedError
+            
+        if after_non_local is not None:
+            self.after_non_local = after_non_local
+            in_channels = getattr(self.backbone, after_non_local)[0].conv1.in_channels
+            if non_local_hidden_channels is None:
+                non_local_hidden_channels = in_channels // 2
+            self.non_local = NonLocal2d(in_channels, non_local_hidden_channels)
 
         if freeze_bn:
             for m in self.backbone.modules():
@@ -160,22 +168,24 @@ class ResNetFPN(nn.Module):
     def forward(self, x):
         module_names = [n for n, _ in self.backbone.named_modules()]
         if 'layer0' in module_names:
-            x1 = self.backbone.layer0(x)
+            x = self.backbone.layer0(x)
         else:
-            x1 = self.backbone.conv1(x)
-            x1 = self.backbone.bn1(x1)
-            x1 = self.backbone.relu(x1)
-            x1 = self.backbone.maxpool(x1)
+            x = self.backbone.conv1(x)
+            x = self.backbone.bn1(x)
+            x = self.backbone.relu(x)
+            x = self.backbone.maxpool(x)
 
-        x1 = self.backbone.layer1(x1)
-        x2 = self.backbone.layer2(x1)
-        x3 = self.backbone.layer3(x2)
-        x4 = self.backbone.layer4(x3)
+        xs = []
+        for i in range(1, 5):
+            if self.after_non_local == f'layer{i}':
+                x = self.non_local(x)
+            x = getattr(self.backbone, f'layer{i}')(x)
+            xs.append(x)
 
-        lat4 = self.lateral4(x4)
-        lat3 = self.lateral3(x3)
-        lat2 = self.lateral2(x2)
-        lat1 = self.lateral1(x1)
+        lat4 = self.lateral4(xs[3])
+        lat3 = self.lateral3(xs[2])
+        lat2 = self.lateral2(xs[1])
+        lat1 = self.lateral1(xs[0])
 
         map4 = lat4
         map3 = lat3 + F.interpolate(map4, scale_factor=2, mode="nearest")
