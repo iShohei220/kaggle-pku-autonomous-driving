@@ -29,7 +29,7 @@ class ResNetFPN(nn.Module):
     def __init__(self, backbone, heads, head_conv=128,
                  num_filters=[256, 256, 256], pretrained=True,
                  dcn=False, gn=False, ws=False, freeze_bn=False,
-                 after_non_local='layer1', non_local_hidden_channels=None):
+                 after_non_local='layer4', non_local_hidden_channels=None):
         super().__init__()
 
         self.heads = heads
